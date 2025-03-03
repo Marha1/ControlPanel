@@ -12,7 +12,6 @@ namespace BellManager
         /// </summary>
         public Form1()
         {
-            this.Hide();
             InitializeComponent();
             _telegramBot = new TelegramBot("7528193408:AAFyeCTvOYFoiGs5-h-PbdW_qqsRW6B3xYc"); 
         }
@@ -30,6 +29,8 @@ namespace BellManager
         private async void Form1_Load_1(object sender, EventArgs e)
         {
             await _telegramBot.StartAsync();
+            this.Hide();
+
         }
     }
 }

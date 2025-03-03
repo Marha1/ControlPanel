@@ -9,11 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="TelegramBot\" />
-    <Folder Include="Service\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="MaterialSkin" Version="0.2.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.2">
       <PrivateAssets>all</PrivateAssets>

@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace BellManager.Models
 {
-    public class Lesson
+    public class Lesson : BaseModel
     {
-        public int Id { get; set; }
         public string Name { get; set; }
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
