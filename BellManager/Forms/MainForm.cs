@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using BellManager.Models;
 using BellManager.Service;
-using BellManager.Service.BellManager;
 
 namespace BellManager
 {
@@ -11,14 +10,13 @@ namespace BellManager
     {
         private readonly LessonService _lessonService;
         private readonly BreakService _breakService;
-        private readonly BellManagerService bellManager;
         private readonly BellManagerService _bellManager;
-        public MainForm()
+        public MainForm(BellManagerService bellManagerService)
         {
             _lessonService = new LessonService();
             _breakService = new BreakService();
             InitializeComponent();
-            _bellManager = new BellManagerService();
+            _bellManager = bellManagerService;
 
             LoadLessons();
             LoadBreaks();
@@ -109,13 +107,11 @@ namespace BellManager
 
                 try
                 {
-                    // Добавление в базу данных через LessonService
                   await  _lessonService.AddLesson(newLesson);
-                    // Загружаем все уроки, чтобы пересчитать перемены
                     var lessons = await _lessonService.GetLessons();
-                  await  _breakService.AddBreaksBetweenLessons(lessons); // Создание перемен
+                    
+                  await  _breakService.AddBreaksBetweenLessons(lessons,string.Empty);
 
-                    // Обновляем отображение данных
                     LoadLessons();
                     LoadBreaks();
                 }
@@ -144,7 +140,7 @@ namespace BellManager
         }
         private void btnFireAlarm_Click(object sender, EventArgs e)
         {
-            /// _bellManager.ToggleAlarm("Пожар", (Button)sender);
+             _bellManager.ToggleAlarm();
         }
 
         private void btnSecurityThreat_Click(object sender, EventArgs e)

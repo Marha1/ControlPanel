@@ -22,4 +22,9 @@
     <PackageReference Include="Telegram.Bot" Version="22.4.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Primitives\" />
+    <Folder Include="Sounds\" />
+  </ItemGroup>
+
 </Project>

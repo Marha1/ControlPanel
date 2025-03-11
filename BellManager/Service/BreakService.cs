@@ -16,10 +16,10 @@ namespace BellManager.Service
                 _breakRepository = new BreakRepository();
         }
 
-        public   async Task AddBreaksBetweenLessons(List<Lesson> lessons)
+        public   async Task AddBreaksBetweenLessons(List<Lesson> lessons,string? sound)
         {
             if(lessons.Count==0) return;
-            await  _breakRepository.AddBreaksBetweenLessons(lessons);
+            await  _breakRepository.AddBreaksBetweenLessons(lessons,sound);
         }
         public async Task AddBreak(Break breakItem)
         {

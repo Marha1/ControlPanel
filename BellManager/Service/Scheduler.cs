@@ -1,113 +1,148 @@
-﻿using BellManager.Models;
-using BellManager.Service.BellManager;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Timers;
-using Timer = System.Timers.Timer;
+﻿    using BellManager.Models;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using System.Timers;
+    using Timer = System.Timers.Timer;
 
-
-namespace BellManager.Service
-{
-    public class Scheduler
+    namespace BellManager.Service
     {
-        private readonly LessonService _lessonService;
-        private readonly BreakService _breakService;
-        private BellManagerService _bellManager;
-        private Timer _timer;
-        private bool _isProcessing = false;
-
-        public event EventHandler<Lesson> LessonEnded;
-        public event EventHandler<Break> BreakStarted;
-        public event EventHandler<Break> BreakEndingSoon;
-        public event EventHandler<Lesson> LessonStarted;
-        public event EventHandler StopAllSounds;
-
-
-        public Scheduler()
+        public class Scheduler
         {
-            _lessonService = new LessonService();
-            _breakService = new BreakService();
-            _timer = new Timer(30000); 
-            _timer.Elapsed += OnTimerElapsed;
-        }
+            private readonly LessonService _lessonService;
+            private readonly BreakService _breakService;
+            private Timer _timer;
+            private bool _isProcessing = false;
 
-        public void Start()
-        {
-            _timer.Start();
-        }
+            // Флаги для отслеживания срабатывания событий
+            private bool _isLessonStartedTriggered = false;
+            private bool _isLessonEndedTriggered = false;
+            private bool _isBreakStartedTriggered = false;
+            private bool _isBreakEndingSoonTriggered = false;
+            
+            //public event EventHandler<Lesson> LessonEnded;
+            public event EventHandler<Break> BreakStarted;
+            public event EventHandler<Break> BreakEndingSoon;
+            public event Func<object, Lesson, Task> LessonStarted;
+            public event EventHandler StopAllSounds;
 
-        public void Stop()
-        {
-            _timer.Stop();
-        }
-
-        private async void OnTimerElapsed(object sender, ElapsedEventArgs e)
-        {
-            if (_isProcessing) return;
-
-            _isProcessing = true;
-            try
+            public Scheduler()
             {
-                var now = DateTime.Now.TimeOfDay;
-                var lessons = await _lessonService.GetLessons();
-                var breaks = await _breakService.GetBreaks();
+                _lessonService = new LessonService();
+                _breakService = new BreakService();
+                _timer = new Timer(15000); // Проверка каждые 5 секунд
+                _timer.Elapsed += OnTimerElapsed;
+            }
 
-                // Автоматическое добавление перемен между уроками
-                await  _breakService.AddBreaksBetweenLessons(lessons);
+            public void Start()
+            {
+                _timer.Start();
+            }
 
-                // Обработка уроков
-                foreach (var lesson in lessons)
+            public void Stop()
+            {
+                _timer.Stop();
+            }
+
+            private async void OnTimerElapsed(object sender, ElapsedEventArgs e)
+            {
+                if (_isProcessing) return;
+
+                _isProcessing = true;
+                try
                 {
-                    if (lesson.IsActive)
+                   var lessons = await _lessonService.GetLessons();
+                    var breaks = await _breakService.GetBreaks();
+
+                    await _breakService.AddBreaksBetweenLessons(lessons, string.Empty);
+
+                    var now = DateTime.Now.TimeOfDay;
+
+                    foreach (var lesson in lessons)
                     {
-                        // Если текущее время попадает в диапазон времени урока
-                        if (now >= lesson.StartTime && now <= lesson.EndTime)
+                        if (lesson.IsActive)
                         {
-                            StopAllSounds?.Invoke(this,null);
+                            // Если текущее время попадает в диапазон времени урока
+                            if (now >= lesson.StartTime && now <= lesson.EndTime)
+                            {
+                                StopAllSounds?.Invoke(this, null);
+                            }
+
+                            // За 15 секунд до урока
+                            if (now >= lesson.StartTime.Add(TimeSpan.FromSeconds(-15)) && now < lesson.StartTime)
+                            {
+                                if (!_isLessonStartedTriggered)
+                                {
+                                    _isLessonStartedTriggered = true;
+                                    await LessonStarted?.Invoke(this, lesson);
+                                }
+                            }
+                            else if (now >= lesson.EndTime)
+                            {
+                                _isLessonStartedTriggered = false;
+                            }
+
+                            if (now >= lesson.EndTime && now < lesson.EndTime.Add(TimeSpan.FromSeconds(59)))
+                            {
+                                if (!_isLessonEndedTriggered)
+                                {
+                                    _isLessonEndedTriggered = true; 
+                                    //LessonEnded?.Invoke(this, lesson);
+                                    await _lessonService.MarkLessonAsInactiveAsync(lesson.Id);
+                                }
+                            }
+                            else if (now < lesson.EndTime)
+                            {
+                                _isLessonEndedTriggered = false; 
+                            }
+                        }
+                        
+                    }
+
+                    // Обработка перерывов
+                    foreach (var breakItem in breaks)
+                    {
+                        // В момент начала перемены
+                        if (now >= breakItem.StartTime && now < breakItem.StartTime.Add(TimeSpan.FromSeconds(59)))
+                        {
+                            if (!_isBreakStartedTriggered)
+                            {
+                                _isBreakStartedTriggered = true;
+                                BreakStarted?.Invoke(this, breakItem);
+                            }
+                        }
+                        else if (now >= breakItem.StartTime)
+                        {
+                            _isLessonStartedTriggered = false;
                         }
 
-                        // За 1 минуту до урока
-                        if (now >= lesson.StartTime.Add(TimeSpan.FromMinutes(-1)) && now < lesson.StartTime)
+                        // За 2 минуты до окончания перемены
+                        if (now >= breakItem.EndTime.Add(TimeSpan.FromMinutes(-2)) && now < breakItem.EndTime)
                         {
-                            LessonStarted?.Invoke(this, lesson);
+                            if (!_isBreakEndingSoonTriggered)
+                            {
+                                _isBreakEndingSoonTriggered = true;
+                                _isBreakStartedTriggered = false;
+                                BreakEndingSoon?.Invoke(this, breakItem);
+                            }
                         }
-
-                        // В момент окончания урока
-                        if (now >= lesson.EndTime && now < lesson.EndTime.Add(TimeSpan.FromSeconds(59)))
+                        else if (now > breakItem.EndTime)
                         {
-                            LessonEnded?.Invoke(this, lesson);
-                            await _lessonService.MarkLessonAsInactiveAsync(lesson.Id);
+                            _isBreakEndingSoonTriggered = false; 
                         }
                     }
-                }
 
-                // Обработка перерывов
-                foreach (var breakItem in breaks)
+                    MessageBox.Show($"Отлад данные:состояния: \n _isLessonStartedTriggered:{_isLessonStartedTriggered}\n_isLessonEndedTriggered:{_isLessonEndedTriggered}\n_isBreakStartedTriggered:{_isBreakStartedTriggered}\n_isBreakEndingSoonTriggered:{_isBreakEndingSoonTriggered}");
+                }
+                catch (Exception ex)
                 {
-                    // В момент начала перемены
-                    if (now >= breakItem.StartTime && now < breakItem.StartTime.Add(TimeSpan.FromSeconds(59)))
-                    {
-                        BreakStarted?.Invoke(this, breakItem);
-                    }
-
-                    // За 2 минуты до окончания перемены
-                    if (now >= breakItem.EndTime.Add(TimeSpan.FromMinutes(-2)) && now < breakItem.EndTime.Add(TimeSpan.FromMinutes(-2)).Add(TimeSpan.FromSeconds(59)))
-                    {
-                        BreakEndingSoon?.Invoke(this, breakItem);
-                    }
+                    // Логирование ошибки
+                    MessageBox.Show($"Ошибка в обработке событий: {ex.Message}");
                 }
-            }
-            catch (Exception ex)
-            {
-                // Логирование ошибки
-                Console.WriteLine($"Ошибка в обработке событий: {ex.Message}");
-            }
-            finally
-            {
-                _isProcessing = false;
+                finally
+                {
+                    _isProcessing = false;
+                }
             }
         }
-        
     }
-}
