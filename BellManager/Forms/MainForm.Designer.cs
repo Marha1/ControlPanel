@@ -26,37 +26,6 @@
         /// Required method for Designer support - do not modify
         /// the contents of this method with the code editor.
         /// </summary>
-          private System.Windows.Forms.DataGridView lessonsGridView;
-        private System.Windows.Forms.DataGridView breaksGridView;
-        private System.Windows.Forms.Button btnAddLesson;
-        private System.Windows.Forms.Button btnDeleteLesson;
-        private System.Windows.Forms.Button btnDeleteBreak;
-        private System.Windows.Forms.MonthCalendar holidayCalendar;
-        private System.Windows.Forms.Button btnAddHoliday;
-        private System.Windows.Forms.Button btnDeleteHoliday;
-        private System.Windows.Forms.DateTimePicker startTimePicker;
-        private System.Windows.Forms.DateTimePicker endTimePicker;
-        private System.Windows.Forms.TextBox lessonNumberTextBox;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Button btnFireAlarm;
-        private System.Windows.Forms.Button btnSecurityThreat;
-        private System.Windows.Forms.Button btnEvacuationAlarm;
-        private System.Windows.Forms.TextBox txtLessonName;
-        private System.Windows.Forms.TextBox txtStartTime;
-        private System.Windows.Forms.TextBox txtEndTime;
-        private System.Windows.Forms.TextBox txtBreakName;
-        private System.Windows.Forms.TextBox txtBreakStart;
-        private System.Windows.Forms.TextBox txtBreakEnd;
-        private System.Windows.Forms.TextBox txtMusicFile;
-        private System.Windows.Forms.DataGridView dataGridViewLessons;
-        private System.Windows.Forms.DataGridView dataGridViewBreaks;
-        private System.Windows.Forms.Button btnStartScheduler;
-        private System.Windows.Forms.Button btnStopScheduler;
-        private System.Windows.Forms.Label lblStatus;
-
-
         private void InitializeComponent()
         {
             lessonsGridView = new DataGridView();
@@ -76,12 +45,6 @@
             ((System.ComponentModel.ISupportInitialize)lessonsGridView).BeginInit();
             ((System.ComponentModel.ISupportInitialize)breaksGridView).BeginInit();
             SuspendLayout();
-            // Настройка стиля формы
-            this.Text = "Менеджер звонков";
-            this.BackColor = System.Drawing.Color.White;
-            this.Font = new System.Drawing.Font("Segoe UI", 9);
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
             // 
             // lessonsGridView
             // 
@@ -92,10 +55,6 @@
             lessonsGridView.RowHeadersWidth = 51;
             lessonsGridView.Size = new Size(707, 231);
             lessonsGridView.TabIndex = 0;
-            lessonsGridView.AutoGenerateColumns = true;
-            lessonsGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            lessonsGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            lessonsGridView.ReadOnly = true;
             // 
             // breaksGridView
             // 
@@ -106,11 +65,6 @@
             breaksGridView.RowHeadersWidth = 51;
             breaksGridView.Size = new Size(707, 231);
             breaksGridView.TabIndex = 1;
-            // Настройка DataGridView для перемен
-            breaksGridView.AutoGenerateColumns = true;
-            breaksGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            breaksGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            breaksGridView.ReadOnly = true;
             // 
             // btnAddLesson
             // 
@@ -119,12 +73,9 @@
             btnAddLesson.Name = "btnAddLesson";
             btnAddLesson.Size = new Size(100, 35);
             btnAddLesson.TabIndex = 2;
-            btnAddLesson.Text = "Добавить";
+            btnAddLesson.Text = "Добавить урок";
             btnAddLesson.UseVisualStyleBackColor = true;
             btnAddLesson.Click += btnAddLesson_Click;
-            btnAddLesson.BackColor = System.Drawing.Color.LightBlue;
-            btnAddLesson.FlatStyle = FlatStyle.Flat;
-            btnAddLesson.FlatAppearance.BorderSize = 0;
             // 
             // btnDeleteLesson
             // 
@@ -133,7 +84,7 @@
             btnDeleteLesson.Name = "btnDeleteLesson";
             btnDeleteLesson.Size = new Size(100, 35);
             btnDeleteLesson.TabIndex = 3;
-            btnDeleteLesson.Text = "Удалить";
+            btnDeleteLesson.Text = "Удалить урок";
             btnDeleteLesson.UseVisualStyleBackColor = true;
             btnDeleteLesson.Click += btnDeleteLesson_Click;
             // 
@@ -144,7 +95,7 @@
             btnDeleteBreak.Name = "btnDeleteBreak";
             btnDeleteBreak.Size = new Size(100, 35);
             btnDeleteBreak.TabIndex = 5;
-            btnDeleteBreak.Text = "Удалить";
+            btnDeleteBreak.Text = "Удалить перемену";
             btnDeleteBreak.UseVisualStyleBackColor = true;
             btnDeleteBreak.Click += btnDeleteBreak_Click;
             // 
@@ -260,16 +211,90 @@
             Controls.Add(lessonsGridView);
             Margin = new Padding(4, 5, 4, 5);
             Name = "MainForm";
-            Text = "MainForm";
+            Text = "Менеджер звонков";
             Load += MainForm_Load;
             ((System.ComponentModel.ISupportInitialize)lessonsGridView).EndInit();
             ((System.ComponentModel.ISupportInitialize)breaksGridView).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
+
+        #endregion
+
+        private DataGridView lessonsGridView;
+        private DataGridView breaksGridView;
+        private Button btnAddLesson;
+        private Button btnDeleteLesson;
+        private Button btnDeleteBreak;
+        private DateTimePicker startTimePicker;
+        private DateTimePicker endTimePicker;
+        private TextBox lessonNumberTextBox;
+        private Label label1;
+        private Label label2;
+        private Label label3;
+        private Button btnFireAlarm;
+        private Button btnSecurityThreat;
+        private Button btnEvacuationAlarm;
+
+        public MainForm()
+        {
+            InitializeComponent();
+            ApplyModernStyle();
+        }
+
+        private void ApplyModernStyle()
+        {
+            this.Text = "Менеджер звонков";
+            this.BackColor = Color.WhiteSmoke;
+            this.FormBorderStyle = FormBorderStyle.None; // Убираем рамку
+            this.StartPosition = FormStartPosition.CenterScreen;
+
+            // Создаем тень вокруг формы
+            this.Paint += (s, e) =>
+            {
+                ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle, Color.Gray, ButtonBorderStyle.Solid);
+            };
+
+            // Улучшаем DataGridView
+            CustomizeGridView(lessonsGridView);
+            CustomizeGridView(breaksGridView);
+
+            // Кастомизация кнопок
+            StyleButton(btnAddLesson);
+            StyleButton(btnDeleteLesson);
+            StyleButton(btnDeleteBreak);
+            StyleButton(btnFireAlarm, Color.Crimson);
+            StyleButton(btnSecurityThreat, Color.DarkOrange);
+            StyleButton(btnEvacuationAlarm, Color.DarkBlue);
+        }
+
+        private void CustomizeGridView(DataGridView grid)
+        {
+            grid.EnableHeadersVisualStyles = false;
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(45, 45, 48);
+            grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            grid.DefaultCellStyle.SelectionBackColor = Color.LightBlue;
+            grid.DefaultCellStyle.SelectionForeColor = Color.Black;
+            grid.BackgroundColor = Color.WhiteSmoke;
+            grid.GridColor = Color.LightGray;
+            grid.BorderStyle = BorderStyle.None;
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        }
+
+        private void StyleButton(Button btn, Color? color = null)
+        {
+            btn.BackColor = color ?? Color.FromArgb(52, 152, 219);
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.ForeColor = Color.White;
+            btn.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            btn.Height = 40;
+            btn.Cursor = Cursors.Hand;
+            btn.Region = new Region(new Rectangle(0, 0, btn.Width, btn.Height));
+
+            btn.MouseEnter += (s, e) => btn.BackColor = ControlPaint.Dark(btn.BackColor, 0.2f);
+            btn.MouseLeave += (s, e) => btn.BackColor = color ?? Color.FromArgb(52, 152, 219);
+        }
     }
-
-
-    #endregion
-
 }

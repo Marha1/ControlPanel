@@ -17,9 +17,36 @@ namespace BellManager
             _breakService = new BreakService();
             InitializeComponent();
             _bellManager = bellManagerService;
-
+            AddChangeMusicButtonColumn();
+            breaksGridView.CellContentClick += breaksGridView_CellContentClick;
             LoadLessons();
             LoadBreaks();
+        }
+        private void breaksGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // Проверяем, что нажатие произошло на столбце с кнопкой
+            if (e.ColumnIndex == breaksGridView.Columns["ChangeMusicColumn"].Index && e.RowIndex >= 0)
+            {
+                // Получаем выбранную перемену
+                var selectedBreak = (Break)breaksGridView.Rows[e.RowIndex].DataBoundItem;
+
+                // Открываем диалоговое окно для выбора файла
+                OpenFileDialog openFileDialog = new OpenFileDialog
+                {
+                    Filter = "Audio Files|*.mp3;*.wav;*.ogg",
+                    Title = "Выберите музыкальный файл"
+                };
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Обновляем путь к музыкальному файлу
+                    selectedBreak.MusicFile = openFileDialog.FileName;
+
+                    // Сохраняем изменения в базе данных
+                    _breakService.Update(selectedBreak);
+                    LoadBreaks();
+                }
+            }
         }
 
         private async void btnDeleteLesson_Click(object sender, EventArgs e)
@@ -34,6 +61,20 @@ namespace BellManager
             {
                 MessageBox.Show("Выберите урок для удаления.");
             }
+        }
+        private void AddChangeMusicButtonColumn()
+        {
+            // Создаем столбец с кнопкой
+            DataGridViewButtonColumn changeMusicButtonColumn = new DataGridViewButtonColumn
+            {
+                Name = "ChangeMusicColumn",
+                HeaderText = "Изменить музыку",
+                Text = "Изменить",
+                UseColumnTextForButtonValue = true // Отображаем текст на кнопке
+            };
+
+            // Добавляем столбец в DataGridView
+            breaksGridView.Columns.Add(changeMusicButtonColumn);
         }
         private async void LoadLessons()
         {
@@ -155,19 +196,6 @@ namespace BellManager
             /// _bellManager.ToggleAlarm("Эвакуация", (Button)sender);
         }
 
-        private async void btnAddBreak_Click(object sender, EventArgs e)
-        {
-            var breakItem = new Break
-            {
-                Name = txtBreakName.Text,
-                StartTime = TimeSpan.Parse(txtBreakStart.Text),
-                EndTime = TimeSpan.Parse(txtBreakEnd.Text),
-                MusicFile = txtMusicFile.Text
-            };
-
-            await _breakService.AddBreak(breakItem);
-            LoadBreaks();
-        }
 
         private void MainForm_Load(object sender, EventArgs e)
         {

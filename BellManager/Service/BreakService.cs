@@ -35,6 +35,12 @@ namespace BellManager.Service
         {
             await _breakRepository.DeleteAsync(lesson);
         }
+
+        public async Task Update(Break _break)
+        {
+            if (_break == null) MessageBox.Show("Перемена! для удаления не найден!");
+            await _breakRepository.UpdateAsync(_break);
+        }
         public async Task Delete(int id)
         {
             var les = await  _breakRepository.GetByIdAsync(id);
