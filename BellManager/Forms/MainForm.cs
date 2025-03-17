@@ -13,9 +13,9 @@ namespace BellManager
         private readonly BellManagerService _bellManager;
         public MainForm(BellManagerService bellManagerService)
         {
+            InitializeComponent();
             _lessonService = new LessonService();
             _breakService = new BreakService();
-            InitializeComponent();
             _bellManager = bellManagerService;
             AddChangeMusicButtonColumn();
             breaksGridView.CellContentClick += breaksGridView_CellContentClick;
@@ -78,15 +78,31 @@ namespace BellManager
         }
         private async void LoadLessons()
         {
-                var lessons = await _lessonService.GetLessons();
-                lessonsGridView.DataSource = lessons;
-          
+            var lessons = await _lessonService.GetLessons();
+            lessonsGridView.DataSource = lessons;
+
+            if (lessonsGridView.Columns.Contains("Name"))
+                lessonsGridView.Columns["Name"].HeaderText = "Номер урока";
+
+            if (lessonsGridView.Columns.Contains("StartTime"))
+                lessonsGridView.Columns["StartTime"].HeaderText = "Начало";
+
+            if (lessonsGridView.Columns.Contains("EndTime"))
+                lessonsGridView.Columns["EndTime"].HeaderText = "Конец";
         }
         private async void LoadBreaks()
         {
             var breaks = await _breakService.GetBreaks();
-                breaksGridView.DataSource = breaks;
+            breaksGridView.DataSource = breaks;
 
+            if (breaksGridView.Columns.Contains("Name"))
+                breaksGridView.Columns["Name"].HeaderText = "Название перемены";
+
+            if (breaksGridView.Columns.Contains("StartTime"))
+                breaksGridView.Columns["StartTime"].HeaderText = "Начало";
+
+            if (breaksGridView.Columns.Contains("EndTime"))
+                breaksGridView.Columns["EndTime"].HeaderText = "Конец";
         }
         private async void btnDeleteBreak_Click(object sender, EventArgs e)
         {

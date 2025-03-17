@@ -35,7 +35,18 @@ namespace BellManager.Service
                 await _repository.UpdateAsync(lesson);
             }
         }
-        
+
+        public async Task<Lesson> GetById(int id)
+        {
+            var lesson = await _repository.GetByIdAsync(id);
+            if (lesson != null)
+            {
+                return lesson;
+            }
+
+            return null;
+        }
+
         public async Task Delete(Lesson lesson)
         {
             await _repository.DeleteAsync(lesson);
@@ -45,6 +56,23 @@ namespace BellManager.Service
           var les=  await _repository.GetByIdAsync(id);
             if (les == null) MessageBox.Show("Урок для удаления не найден!");
             else await _repository.DeleteAsync(les);
+        }
+
+        public async Task UpdateLessonTime(int lessonId, TimeSpan newStartTime, TimeSpan newEndTime)
+        {
+            var less = await _repository.GetByIdAsync(lessonId);
+            less.StartTime = newStartTime;
+            less.EndTime = newEndTime;
+            less.IsActive = true;
+            await _repository.UpdateAsync(less);
+        }
+
+        public async Task UpdateLessonActiveState(int lessonId, bool newState)
+        {
+            var lesson = await _repository.GetByIdAsync(lessonId);
+            if (lesson == null) MessageBox.Show("Ошибка,сообщите администратору");
+            lesson.IsActive =newState;
+           await _repository.UpdateAsync(lesson);
         }
     }
 }
