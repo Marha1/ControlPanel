@@ -215,18 +215,6 @@ namespace BellManager
              _bellManager.ToggleAlarm();
         }
 
-        private void btnSecurityThreat_Click(object sender, EventArgs e)
-        {
-
-            ///  _bellManager.ToggleAlarm("Угроза безопасности", (Button)sender);
-        }
-
-        private void btnEvacuationAlarm_Click(object sender, EventArgs e)
-        {
-
-            /// _bellManager.ToggleAlarm("Эвакуация", (Button)sender);
-        }
-
 
         private void MainForm_Load(object sender, EventArgs e)
         {
