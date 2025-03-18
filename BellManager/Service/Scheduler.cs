@@ -30,7 +30,7 @@
             {
                 _lessonService = new LessonService();
                 _breakService = new BreakService();
-                _timer = new Timer(15000); // Проверка каждые 5 секунд
+                _timer = new Timer(5000); // Проверка каждые 5 секунд
                 _timer.Elapsed += OnTimerElapsed;
             }
 
@@ -69,7 +69,7 @@
                             }
 
                             // За 15 секунд до урока
-                            if (now >= lesson.StartTime.Add(TimeSpan.FromSeconds(-15)) && now < lesson.StartTime)
+                            if (now >= lesson.StartTime.Add(TimeSpan.FromSeconds(-3)) && now < lesson.EndTime)
                             {
                                 if (!_isLessonStartedTriggered)
                                 {

@@ -1,3 +1,5 @@
+using BellManager.Service;
+
 namespace BellManager
 {
     /// <summary>
@@ -6,14 +8,16 @@ namespace BellManager
     public partial class Form1 : Form
     { 
         private readonly TelegramBot _telegramBot;
+        private readonly LessonService _lessonService;
 
         /// <summary>
         /// Запуск бота после иницилизации формы
         /// </summary>
         public Form1()
         {
+            _lessonService = new LessonService();
             InitializeComponent();
-            _telegramBot = new TelegramBot("7528193408:AAFyeCTvOYFoiGs5-h-PbdW_qqsRW6B3xYc"); 
+            _telegramBot = new TelegramBot("7528193408:AAFyeCTvOYFoiGs5-h-PbdW_qqsRW6B3xYc", _lessonService); 
         }
 
         

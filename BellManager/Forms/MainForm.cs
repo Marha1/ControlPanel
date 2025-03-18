@@ -11,13 +11,14 @@ namespace BellManager
         private readonly LessonService _lessonService;
         private readonly BreakService _breakService;
         private readonly BellManagerService _bellManager;
-        public MainForm(BellManagerService bellManagerService)
+        public MainForm(BellManagerService bellManagerService,LessonService service)
         {
             InitializeComponent();
-            _lessonService = new LessonService();
+            _lessonService = service;
             _breakService = new BreakService();
             _bellManager = bellManagerService;
             AddChangeMusicButtonColumn();
+            _lessonService.LessonAdded += OnLessonAdded;
             breaksGridView.CellContentClick += breaksGridView_CellContentClick;
             LoadLessons();
             LoadBreaks();
@@ -49,6 +50,18 @@ namespace BellManager
             }
         }
 
+        private void OnLessonAdded()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(OnLessonAdded));
+            }
+            else
+            {
+                LoadLessons();
+                LoadBreaks();
+            }
+        }
         private async void btnDeleteLesson_Click(object sender, EventArgs e)
         {
             if (lessonsGridView.SelectedRows.Count > 0)
@@ -78,6 +91,7 @@ namespace BellManager
         }
         private async void LoadLessons()
         {
+            breaksGridView.DataSource = null;
             var lessons = await _lessonService.GetLessons();
             lessonsGridView.DataSource = lessons;
 
@@ -92,6 +106,7 @@ namespace BellManager
         }
         private async void LoadBreaks()
         {
+            breaksGridView.DataSource = null;
             var breaks = await _breakService.GetBreaks();
             breaksGridView.DataSource = breaks;
 

@@ -24,7 +24,7 @@ namespace BellManager.Repository
                 return;
 
             var sortedLessons = lessons.OrderBy(l => l.StartTime).ToList();
-
+            
             for (int i = 0; i < sortedLessons.Count - 1; i++)
             {
                 var currentLesson = sortedLessons[i];

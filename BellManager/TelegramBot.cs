@@ -26,12 +26,12 @@ namespace BellManager
         private bool _isForm1Open;
         private readonly Dictionary<long, UserEditState> _userStates = new Dictionary<long, UserEditState>();
 
-        public TelegramBot(string token)
+        public TelegramBot(string token,LessonService service)
         {
             _botClient = new TelegramBotClient(token);
             _cancellationTokenSource = new CancellationTokenSource();
             _bellManagerService = new BellManagerService();
-            _lessonService = new LessonService();
+            _lessonService = service;
         }
 
         public async Task StartAsync()
@@ -274,10 +274,9 @@ namespace BellManager
         {
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "Включить", "Выключить" },
+                new KeyboardButton[] { _isForm1Open ? "Выключить" : "Включить" },
                 new KeyboardButton[] { "Управление музыкой", "Управление расписанием" },
-                new KeyboardButton[] { "Тревога" },
-                new KeyboardButton[] { "Назад" }
+                new KeyboardButton[] { "Тревога" }
             })
             {
                 ResizeKeyboard = true
@@ -302,10 +301,9 @@ namespace BellManager
                     "Менеджер выключен",
                     replyMarkup: new ReplyKeyboardMarkup(new[]
                     {
-                        new KeyboardButton("Выключить"),
-                        new KeyboardButton("Управление музыкой"),
-                        new KeyboardButton("Управление расписанием"),
-                        new KeyboardButton("Тревога")
+                        new KeyboardButton[] { _isForm1Open ? "Выключить" : "Включить" },
+                        new KeyboardButton[] { "Управление музыкой", "Управление расписанием" },
+                        new KeyboardButton[] { "Тревога" }
                     })
                     {
                         ResizeKeyboard = true,
@@ -348,7 +346,7 @@ namespace BellManager
                     "Менеджер запущен",
                     replyMarkup: new ReplyKeyboardMarkup(new[]
                     {
-                        new KeyboardButton[] { "Выключить" },
+                        new KeyboardButton[] { _isForm1Open ? "Выключить" : "Включить" },
                         new KeyboardButton[] { "Управление музыкой", "Управление расписанием" },
                         new KeyboardButton[] { "Тревога" }
                     })
@@ -445,7 +443,7 @@ namespace BellManager
             if (Application.OpenForms["MainForm"] == null)
                 Application.OpenForms[0].Invoke(() =>
                 {
-                    _form1 = new MainForm(_bellManagerService);
+                    _form1 = new MainForm(_bellManagerService, _lessonService);
                     _form1.Show();
                 });
         }

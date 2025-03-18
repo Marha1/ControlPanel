@@ -12,6 +12,7 @@ namespace BellManager.Service
     public class LessonService
     {
         private readonly LessonRepository _repository;
+        public event Action LessonAdded;
         public LessonService()
         {
                 _repository = new LessonRepository();
@@ -25,6 +26,7 @@ namespace BellManager.Service
             if (lesson == null)
                 throw new ArgumentNullException(nameof(lesson));
             await _repository.AddAsync(lesson);
+            LessonAdded?.Invoke();
         }
         public async Task MarkLessonAsInactiveAsync(int lessonId)
         {
@@ -33,6 +35,7 @@ namespace BellManager.Service
             {
                 lesson.IsActive = false;
                 await _repository.UpdateAsync(lesson);
+                LessonAdded?.Invoke();
             }
         }
 
@@ -65,6 +68,7 @@ namespace BellManager.Service
             less.EndTime = newEndTime;
             less.IsActive = true;
             await _repository.UpdateAsync(less);
+            LessonAdded?.Invoke();
         }
 
         public async Task UpdateLessonActiveState(int lessonId, bool newState)
@@ -73,6 +77,7 @@ namespace BellManager.Service
             if (lesson == null) MessageBox.Show("Ошибка,сообщите администратору");
             lesson.IsActive =newState;
            await _repository.UpdateAsync(lesson);
+           LessonAdded?.Invoke();
         }
     }
 }
