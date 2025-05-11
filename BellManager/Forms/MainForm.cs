@@ -83,17 +83,22 @@ namespace BellManager
                 Name = "ChangeMusicColumn",
                 HeaderText = "Изменить музыку",
                 Text = "Изменить",
-                UseColumnTextForButtonValue = true // Отображаем текст на кнопке
+                UseColumnTextForButtonValue = true 
             };
 
-            // Добавляем столбец в DataGridView
             breaksGridView.Columns.Add(changeMusicButtonColumn);
         }
+
         private async void LoadLessons()
         {
             breaksGridView.DataSource = null;
-            var lessons = await _lessonService.GetLessons();
+            var lessons = (await _lessonService.GetLessons())
+                          .OrderBy(l => l.StartTime)
+                          .ToList();
             lessonsGridView.DataSource = lessons;
+
+            if (lessonsGridView.Columns.Contains("Id"))
+                lessonsGridView.Columns["Id"].Visible = false;
 
             if (lessonsGridView.Columns.Contains("Name"))
                 lessonsGridView.Columns["Name"].HeaderText = "Номер урока";
@@ -104,11 +109,14 @@ namespace BellManager
             if (lessonsGridView.Columns.Contains("EndTime"))
                 lessonsGridView.Columns["EndTime"].HeaderText = "Конец";
         }
+
         private async void LoadBreaks()
         {
             breaksGridView.DataSource = null;
             var breaks = await _breakService.GetBreaks();
             breaksGridView.DataSource = breaks;
+            if (breaksGridView.Columns.Contains("Id"))
+                breaksGridView.Columns["Id"].Visible = false;
 
             if (breaksGridView.Columns.Contains("Name"))
                 breaksGridView.Columns["Name"].HeaderText = "Название перемены";
@@ -200,13 +208,20 @@ namespace BellManager
         }
         public void SafeClose()
         {
+            _bellManager?.StopAllSounds();
+
+            // 2. Закрытие формы с проверкой потока
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action(SafeClose));
+                this.Invoke(new Action(() =>
+                {
+                    this.Close();
+                    this.Dispose();
+                }));
             }
             else
             {
-                this.Hide();
+                this.Close();
                 this.Dispose();
             }
         }

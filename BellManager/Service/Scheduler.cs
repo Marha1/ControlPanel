@@ -1,148 +1,215 @@
-﻿    using BellManager.Models;
-    using System;
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
-    using System.Timers;
-    using Timer = System.Timers.Timer;
+﻿using BellManager.Models;
+using BellManager.Service;
+using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Timers;
 
-    namespace BellManager.Service
+public sealed class Scheduler : IDisposable
+{
+    private const int TimerIntervalMs = 1000;
+    private const int LessonEndWindowSec = 59;
+    private const int BreakEndWarningMinutes = 2;
+
+    private readonly LessonService _lessonService = new();
+    private readonly BreakService _breakService = new();
+    private readonly System.Timers.Timer _timer;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private bool _disposed;
+
+    // Потокобезопасные коллекции для отслеживания состояний
+    private readonly ConcurrentDictionary<int, byte> _startedLessons = new();
+    private readonly ConcurrentDictionary<int, byte> _endedLessons = new();
+    private readonly ConcurrentDictionary<int, byte> _startedBreaks = new();
+    private readonly ConcurrentDictionary<int, byte> _endingSoonBreaks = new();
+
+    public event EventHandler<Break> BreakStarted;
+    public event EventHandler<Break> BreakEndingSoon;
+    public event Func<object, Lesson, Task> LessonStarted;
+    public event EventHandler StopAllSounds;
+
+    public Scheduler()
     {
-        public class Scheduler
+        _timer = new System.Timers.Timer(TimerIntervalMs);
+        _timer.Elapsed += OnTimerElapsedSafe;
+    }
+
+    private async void OnTimerElapsedSafe(object sender, ElapsedEventArgs e)
+    {
+        try
         {
-            private readonly LessonService _lessonService;
-            private readonly BreakService _breakService;
-            private Timer _timer;
-            private bool _isProcessing = false;
+            await ProcessScheduleAsync(e.SignalTime);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Scheduler Error] {ex}");
+        }
+    }
 
-            // Флаги для отслеживания срабатывания событий
-            private bool _isLessonStartedTriggered = false;
-            private bool _isLessonEndedTriggered = false;
-            private bool _isBreakStartedTriggered = false;
-            private bool _isBreakEndingSoonTriggered = false;
-            
-            //public event EventHandler<Lesson> LessonEnded;
-            public event EventHandler<Break> BreakStarted;
-            public event EventHandler<Break> BreakEndingSoon;
-            public event Func<object, Lesson, Task> LessonStarted;
-            public event EventHandler StopAllSounds;
+    public void Start() => _timer.Start();
+    public void Stop() => _timer.Stop();
 
-            public Scheduler()
+    private async Task ProcessScheduleAsync(DateTime nowTime)
+    {
+        if (!await _semaphore.WaitAsync(0)) return;
+
+        try
+        {
+            var now = nowTime.TimeOfDay;
+            var lessons = await GetValidLessonsAsync();
+            var breaks = await GetValidBreaksAsync();
+
+            if (lessons == null || breaks == null) return;
+
+            await ProcessLessonsAsync(lessons, now);
+            await ProcessBreaksAsync(breaks, now);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    private async Task<List<Lesson>> GetValidLessonsAsync()
+    {
+        var lessons = (await _lessonService.GetLessons())?
+            .Where(l => l != null && l.IsActive && l.StartTime != null && l.EndTime != null)
+            .ToList();
+
+        if (lessons == null) Debug.WriteLine("[Warning] No valid lessons");
+        return lessons;
+    }
+
+    private async Task<List<Break>> GetValidBreaksAsync()
+    {
+        var breaks = (await _breakService.GetBreaks())?
+            .Where(b => b != null && b.StartTime != null && b.EndTime != null)
+            .ToList();
+
+        if (breaks == null) Debug.WriteLine("[Warning] No valid breaks");
+        return breaks;
+    }
+
+    private async Task ProcessLessonsAsync(List<Lesson> lessons, TimeSpan now)
+    {
+        foreach (var lesson in lessons)
+        {
+            if (now >= lesson.StartTime && now < lesson.EndTime)
             {
-                _lessonService = new LessonService();
-                _breakService = new BreakService();
-                _timer = new Timer(5000); // Проверка каждые 5 секунд
-                _timer.Elapsed += OnTimerElapsed;
+                await HandleLessonStart(lesson);
             }
-
-            public void Start()
+            else
             {
-                _timer.Start();
+                _startedLessons.TryRemove(lesson.Id, out _);
+                await HandleLessonEnd(lesson, now);
             }
+        }
+    }
 
-            public void Stop()
+    private async Task HandleLessonStart(Lesson lesson)
+    {
+        if (_startedLessons.TryAdd(lesson.Id, 0))
+        {
+            StopAllSounds?.Invoke(this, EventArgs.Empty);
+            try
             {
-                _timer.Stop();
+                await (LessonStarted?.Invoke(this, lesson) ?? Task.CompletedTask);
             }
-
-            private async void OnTimerElapsed(object sender, ElapsedEventArgs e)
+            catch (Exception ex)
             {
-                if (_isProcessing) return;
+                Debug.WriteLine($"[Lesson Start Error] {ex}");
+                _startedLessons.TryRemove(lesson.Id, out _);
+            }
+        }
+    }
 
-                _isProcessing = true;
+
+    private async Task HandleLessonEnd(Lesson lesson, TimeSpan now)
+    {
+        var endWindow = lesson.EndTime.Add(TimeSpan.FromSeconds(LessonEndWindowSec));
+        if (now >= lesson.EndTime && now < endWindow && lesson.IsActive)
+        {
+            if (_endedLessons.TryAdd(lesson.Id, 0))
+            {
                 try
                 {
-                   var lessons = await _lessonService.GetLessons();
-                    var breaks = await _breakService.GetBreaks();
-
-                    await _breakService.AddBreaksBetweenLessons(lessons, string.Empty);
-
-                    var now = DateTime.Now.TimeOfDay;
-
-                    foreach (var lesson in lessons)
-                    {
-                        if (lesson.IsActive)
-                        {
-                            // Если текущее время попадает в диапазон времени урока
-                            if (now >= lesson.StartTime && now <= lesson.EndTime)
-                            {
-                                StopAllSounds?.Invoke(this, null);
-                            }
-
-                            // За 15 секунд до урока
-                            if (now >= lesson.StartTime.Add(TimeSpan.FromSeconds(-3)) && now < lesson.EndTime)
-                            {
-                                if (!_isLessonStartedTriggered)
-                                {
-                                    _isLessonStartedTriggered = true;
-                                    await LessonStarted?.Invoke(this, lesson);
-                                }
-                            }
-                            else if (now >= lesson.EndTime)
-                            {
-                                _isLessonStartedTriggered = false;
-                            }
-
-                            if (now >= lesson.EndTime && now < lesson.EndTime.Add(TimeSpan.FromSeconds(59)))
-                            {
-                                if (!_isLessonEndedTriggered)
-                                {
-                                    _isLessonEndedTriggered = true; 
-                                    //LessonEnded?.Invoke(this, lesson);
-                                    await _lessonService.MarkLessonAsInactiveAsync(lesson.Id);
-                                }
-                            }
-                            else if (now < lesson.EndTime)
-                            {
-                                _isLessonEndedTriggered = false; 
-                            }
-                        }
-                        
-                    }
-
-                    // Обработка перерывов
-                    foreach (var breakItem in breaks)
-                    {
-                        // В момент начала перемены
-                        if (now >= breakItem.StartTime && now < breakItem.StartTime.Add(TimeSpan.FromSeconds(59)))
-                        {
-                            if (!_isBreakStartedTriggered)
-                            {
-                                _isBreakStartedTriggered = true;
-                                BreakStarted?.Invoke(this, breakItem);
-                            }
-                        }
-                        else if (now >= breakItem.StartTime)
-                        {
-                            _isLessonStartedTriggered = false;
-                        }
-
-                        // За 2 минуты до окончания перемены
-                        if (now >= breakItem.EndTime.Add(TimeSpan.FromMinutes(-2)) && now < breakItem.EndTime)
-                        {
-                            if (!_isBreakEndingSoonTriggered)
-                            {
-                                _isBreakEndingSoonTriggered = true;
-                                _isBreakStartedTriggered = false;
-                                BreakEndingSoon?.Invoke(this, breakItem);
-                            }
-                        }
-                        else if (now > breakItem.EndTime)
-                        {
-                            _isBreakEndingSoonTriggered = false; 
-                        }
-                    }
-
-                    MessageBox.Show($"Отлад данные:состояния: \n _isLessonStartedTriggered:{_isLessonStartedTriggered}\n_isLessonEndedTriggered:{_isLessonEndedTriggered}\n_isBreakStartedTriggered:{_isBreakStartedTriggered}\n_isBreakEndingSoonTriggered:{_isBreakEndingSoonTriggered}");
-                }
-                catch (Exception ex)
-                {
-                    // Логирование ошибки
-                    MessageBox.Show($"Ошибка в обработке событий: {ex.Message}");
+                    await _lessonService.MarkLessonAsInactiveAsync(lesson.Id);
                 }
                 finally
                 {
-                    _isProcessing = false;
+                    _endedLessons.TryRemove(lesson.Id, out _);
                 }
             }
         }
     }
+
+    private async Task ProcessBreaksAsync(List<Break> breaks, TimeSpan now)
+    {
+        foreach (var br in breaks)
+        {
+            // 1. Проверка начала перемены
+            if (now >= br.StartTime && now < br.EndTime)
+            {
+                HandleBreakStart(br);
+
+                // 2. Проверка приближения конца перемены
+                var soonTime = br.EndTime.Subtract(TimeSpan.FromMinutes(BreakEndWarningMinutes));
+                if (now >= soonTime)
+                {
+                    HandleBreakEnd(br, now);
+                }
+            }
+            else
+            {
+                // 3. Очистка флагов, если перемена завершилась
+                _startedBreaks.TryRemove(br.Id, out _);
+                _endingSoonBreaks.TryRemove(br.Id, out _);
+            }
+        }
+    }
+
+    private void HandleBreakStart(Break br)
+    {
+        if (_startedBreaks.TryAdd(br.Id, 0))
+        {
+            try
+            {
+                BreakStarted?.Invoke(this, br);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Break Start Error] {ex}");
+                _startedBreaks.TryRemove(br.Id, out _);
+            }
+        }
+    }
+
+    private void HandleBreakEnd(Break br, TimeSpan now)
+    {
+        if (_endingSoonBreaks.TryAdd(br.Id, 0)) 
+        {
+            try
+            {
+                Debug.WriteLine($"[Break Warning] Processing for break {br.Id}");
+                BreakEndingSoon?.Invoke(this, br);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HandleBreakEnd Error] {ex}");
+            }
+        }
+    }
+
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _timer?.Dispose();
+        _semaphore?.Dispose();
+        _disposed = true;
+    }
+}

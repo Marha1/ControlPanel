@@ -53,31 +53,48 @@ public class BellManagerService
     /// <summary>
     /// Останавливает все звуки: фоновые эффекты, музыку и тревогу.
     /// </summary>
-    private void StopAllSounds()
+    public void StopAllSounds()
     {
         lock (_globalLock)
         {
+            // Сбрасываем флаги состояния
             _isSoundPlaying = false;
             _isMusicPlaying = false;
             _isAlarmActive = false;
 
-            _musicCts?.Cancel();
-            _musicCts?.Dispose();
-            _musicCts = null;
-
-            // Останавливаем и освобождаем фоновые ресурсы музыки
+            // Останавливаем и освобождаем музыку
             lock (_musicLock)
             {
-                _musicPlayer?.Stop();
-                _musicPlayer?.Dispose();
-                _musicPlayer = null;
-                _currentMusicReader?.Dispose();
-                _currentMusicReader = null;
+                try
+                {
+                    _musicCts?.Cancel();
+                    _musicCts?.Dispose();
+
+                    _musicPlayer?.Stop();
+                    _musicPlayer?.Dispose();
+                    _currentMusicReader?.Dispose();
+                }
+                finally
+                {
+                    _musicCts = null;
+                    _musicPlayer = null;
+                    _currentMusicReader = null;
+                }
             }
 
-            _alarmCts?.Cancel();
-            _alarmCts?.Dispose();
-            _alarmCts = null;
+            // Останавливаем и освобождаем тревогу (с защитой от null)
+            try
+            {
+                if (_alarmCts != null)
+                {
+                    _alarmCts.Cancel();
+                    _alarmCts.Dispose();
+                }
+            }
+            finally
+            {
+                _alarmCts = null;
+            }
         }
     }
 
